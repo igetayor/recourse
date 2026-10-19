@@ -1,0 +1,130 @@
+# GraphQL Schema — Recourse API
+
+"""
+User roles within the Recourse platform.
+"""
+enum Role {
+  ADMIN
+  ANALYST
+  AUDITOR
+  USER
+}
+
+"""
+Lifecycle status of a financial dispute.
+"""
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+"""
+A registered system user.
+"""
+type User {
+  id: ID!
+  email: String!
+  fullName: String!
+  role: Role!
+  createdAt: String!
+  updatedAt: String!
+}
+
+"""
+A financial transaction dispute case.
+"""
+type Dispute {
+  id: ID!
+  title: String!
+  description: String!
+  amount: Float!
+  currency: String!
+  status: DisputeStatus!
+  createdBy: User!
+  assignee: User
+  resolutionNotes: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+"""
+JWT authentication payload returned on successful login.
+"""
+type AuthPayload {
+  token: String!
+  user: User!
+  expiresIn: Int!
+}
+
+"""
+Input to register a new user.
+"""
+input RegisterInput {
+  email: String!
+  password: String!
+  fullName: String!
+  role: Role
+}
+
+"""
+Input to login an existing user.
+"""
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+"""
+Input to create a new dispute.
+"""
+input CreateDisputeInput {
+  title: String!
+  description: String!
+  amount: Float!
+  currency: String!
+}
+
+"""
+Input to update a dispute's status and optional assignment.
+"""
+input UpdateDisputeInput {
+  status: DisputeStatus!
+  resolutionNotes: String
+  assigneeId: String
+}
+
+type Query {
+  """Fetch the authenticated user's profile."""
+  me: User!
+
+  """List all system users. Requires ADMIN or ANALYST role."""
+  users: [User!]!
+
+  """Fetch a single dispute by ID."""
+  dispute(id: ID!): Dispute!
+
+  """List disputes with optional status filter."""
+  disputes(status: DisputeStatus): [Dispute!]!
+}
+
+type Mutation {
+  """Register a new user account."""
+  register(input: RegisterInput!): AuthPayload!
+
+  """Authenticate and receive a JWT token."""
+  login(input: LoginInput!): AuthPayload!
+
+  """Create a new financial dispute. Requires authentication."""
+  createDispute(input: CreateDisputeInput!): Dispute!
+
+  """Update dispute status. Requires ANALYST or ADMIN role."""
+  updateDispute(id: ID!, input: UpdateDisputeInput!): Dispute!
+
+  """Delete a dispute. Requires ADMIN role."""
+  deleteDispute(id: ID!): Boolean!
+
+  """Update a user's role. Requires ADMIN role."""
+  updateUserRole(userId: ID!, role: Role!): User!
+}

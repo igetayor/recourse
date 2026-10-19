@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: recourse_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: recourse
+      POSTGRES_PASSWORD: recourse_secret
+      POSTGRES_DB: recourse_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - recourse_pgdata:/var/lib/postgresql/data
+      - ./migrations/000001_create_tables.up.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recourse -d recourse_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Recourse API ────────────────────────────────────────────────────
+  recourse:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: recourse_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    environment:
+      PORT: "8083"
+      SERVICE_NAME: "recourse-api"
+      DATABASE_URL: "postgres://recourse:recourse_secret@postgres:5432/recourse_db?sslmode=disable"
+      DB_MAX_CONNS: "20"
+      DB_MIN_CONNS: "5"
+      JWT_SECRET: "CHANGE-ME-in-production-use-a-long-random-secret"
+      JWT_EXPIRATION_HOURS: "24"
+      REQUEST_TIMEOUT_SEC: "10"
+      LOG_LEVEL: "INFO"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  recourse_pgdata:
+    driver: local
