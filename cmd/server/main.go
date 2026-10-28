@@ -30,16 +30,20 @@ func main() {
 
 	// ─── Database ────────────────────────────────────────────────────
 	ctx := context.Background()
+
+	var userRepo db.UserRepo
+	var disputeRepo db.DisputeRepo
+
 	pool, err := db.New(ctx, cfg, log)
 	if err != nil {
-		log.Error("failed to connect to database", "error", err)
-		os.Exit(1)
+		log.Warn("⚠️  Postgres unavailable — running with in-memory store (demo mode). Data will NOT persist across restarts.", "error", err)
+		userRepo = db.NewMemUserRepository()
+		disputeRepo = db.NewMemDisputeRepository()
+	} else {
+		defer pool.Close()
+		userRepo = db.NewUserRepository(pool)
+		disputeRepo = db.NewDisputeRepository(pool)
 	}
-	defer pool.Close()
-
-	// ─── Repositories ────────────────────────────────────────────────
-	userRepo := db.NewUserRepository(pool)
-	disputeRepo := db.NewDisputeRepository(pool)
 
 	// ─── Auth ────────────────────────────────────────────────────────
 	jwtService := auth.NewJWTService(cfg)

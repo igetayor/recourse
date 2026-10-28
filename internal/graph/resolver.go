@@ -97,8 +97,8 @@ type UpdateDisputeInput struct {
 
 // Resolver is the root resolver holding shared service dependencies.
 type Resolver struct {
-	UserRepo    *db.UserRepository
-	DisputeRepo *db.DisputeRepository
+	UserRepo    db.UserRepo
+	DisputeRepo db.DisputeRepo
 	JWTService  *auth.JWTService
 	Cfg         *config.Config
 }
