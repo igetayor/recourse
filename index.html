@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recourse API â€” Documentation</title>
+  <meta name="description" content="Recourse is a high-performance Go microservice for financial dispute resolution with GraphQL API, JWT auth, RBAC, and PostgreSQL persistence." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="web/style.css">
+  <style>
+    /* â”€â”€â”€ Design tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    :root {
+      --bg-base:    #0b0e17;
+      --bg-surface: #111520;
+      --bg-card:    #161b2e;
+      --bg-code:    #0d1117;
+      --border:     rgba(255,255,255,0.07);
+      --border-glow:rgba(139,92,246,0.35);
+      --text-primary:   #e8eaf6;
+      --text-secondary: #8892b0;
+      --text-muted:     #4a5568;
+      --accent-purple:  #8b5cf6;
+      --accent-cyan:    #06b6d4;
+      --accent-green:   #10b981;
+      --accent-amber:   #f59e0b;
+      --grad-hero: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 60%, #10b981 100%);
+      --grad-card: linear-gradient(145deg, rgba(139,92,246,0.08), rgba(6,182,212,0.04));
+      --sidebar-w: 260px;
+      --topbar-h:  60px;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --glow: 0 0 30px rgba(139,92,246,0.2);
+    }
+
+    /* â”€â”€â”€ Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 15px; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* â”€â”€â”€ Scrollbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 3px; }
+
+    /* â”€â”€â”€ Top bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--topbar-h);
+      background: rgba(11,14,23,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 20px;
+      z-index: 100;
+    }
+    .logo {
+      font-weight: 700;
+      font-size: 1.1rem;
+      background: var(--grad-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      flex-shrink: 0;
+    }
+    .topbar-spacer { flex: 1; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .badge-online {
+      background: rgba(16,185,129,0.15);
+      border: 1px solid rgba(16,185,129,0.4);
+      color: var(--accent-green);
+    }
+    .badge-online::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .badge-version {
+      background: rgba(139,92,246,0.15);
+      border: 1px solid rgba(139,92,246,0.35);
+      color: var(--accent-purple);
+    }
+    .topbar-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .topbar-link:hover { color: var(--text-primary); }
+
+    /* â”€â”€â”€ Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .layout {
+      display: flex;
+      margin-top: var(--topbar-h);
+      min-height: calc(100vh - var(--topbar-h));
+    }
+
+    /* â”€â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: var(--topbar-h);
+      bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 24px 0 40px;
+    }
+    .sidebar-section { margin-bottom: 28px; }
+    .sidebar-label {
+      padding: 0 20px 8px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 20px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .sidebar-link:hover {
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.03);
+    }
+    .sidebar-link.active {
+      color: var(--accent-purple);
+      border-left-color: var(--accent-purple);
+      background: rgba(139,92,246,0.06);
+    }
+    .sidebar-link .icon { font-size: 0.9rem; width: 16px; }
+
+    /* â”€â”€â”€ Main content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      max-width: calc(100vw - var(--sidebar-w));
+    }
+
+    /* â”€â”€â”€ Hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .hero {
+      padding: 80px 64px 72px;
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; left: 30%;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(139,92,246,0.1);
+      border: 1px solid rgba(139,92,246,0.3);
+      color: var(--accent-purple);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: 3.4rem;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+    }
+    .hero h1 .gradient-text {
+      background: var(--grad-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-desc {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      max-width: 580px;
+      line-height: 1.7;
+      margin-bottom: 36px;
+    }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--accent-purple);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(139,92,246,0.4);
+    }
+    .btn-primary:hover {
+      background: #7c3aed;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(139,92,246,0.5);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover {
+      border-color: var(--accent-purple);
+      color: var(--accent-purple);
+      background: rgba(139,92,246,0.06);
+    }
+
+    /* â”€â”€â”€ Content sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .content { padding: 56px 64px; }
+    .section { margin-bottom: 72px; }
+    .section-anchor { display: block; position: relative; top: calc(-1 * var(--topbar-h) - 20px); visibility: hidden; }
+
+    /* â”€â”€â”€ Stats bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 56px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover {
+      border-color: var(--border-glow);
+      box-shadow: var(--glow);
+    }
+    .stat-value {
+      font-size: 1.7rem;
+      font-weight: 700;
+      background: var(--grad-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
+
+    /* â”€â”€â”€ Section headings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .section h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .section-desc {
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+      line-height: 1.7;
+      font-size: 0.95rem;
+    }
+    .section h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 28px 0 12px;
+      color: var(--text-primary);
+    }
+
+    /* â”€â”€â”€ Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 20px;
+      background: var(--grad-card), var(--bg-card);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .card:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-1px);
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .card-icon { font-size: 1.4rem; margin-bottom: 12px; }
+    .card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; }
+    .card p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
+
+    /* â”€â”€â”€ Code blocks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .code-block {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid var(--border);
+    }
+    .code-lang {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .copy-btn {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      background: none;
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 4px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .copy-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--accent-purple);
+    }
+    pre {
+      padding: 20px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.83rem;
+      line-height: 1.7;
+      tab-size: 2;
+    }
+    .kw { color: #c792ea; }
+    .str { color: #c3e88d; }
+    .num { color: #f78c6c; }
+    .cmt { color: #546e7a; font-style: italic; }
+    .key { color: #80cbc4; }
+    .type { color: #ffcb6b; }
+    .fn { color: #82aaff; }
+    .op { color: #89ddff; }
+    .field { color: #f07178; }
+
+    /* â”€â”€â”€ Method badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .method-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+    .method-post { background: rgba(139,92,246,0.2); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
+    .method-get  { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+    .method-gql  { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+
+    /* â”€â”€â”€ Endpoint list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .endpoint-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px 22px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 10px;
+      background: var(--bg-card);
+      transition: border-color 0.2s;
+    }
+    .endpoint-item:hover { border-color: var(--border-glow); }
+    .endpoint-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .endpoint-desc { font-size: 0.8rem; color: var(--text-muted); }
+    .endpoint-auth {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      color: var(--accent-amber);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    /* â”€â”€â”€ Role table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .role-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .role-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .role-table td {
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: top;
+    }
+    .role-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .perm-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      background: rgba(6,182,212,0.1);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(6,182,212,0.2);
+      margin: 2px;
+    }
+    .role-chip {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .role-admin   { background: rgba(139,92,246,0.15); color: #a78bfa; }
+    .role-analyst { background: rgba(6,182,212,0.12); color: var(--accent-cyan); }
+    .role-auditor { background: rgba(245,158,11,0.12); color: var(--accent-amber); }
+    .role-user    { background: rgba(16,185,129,0.1); color: var(--accent-green); }
+
+    /* â”€â”€â”€ GraphQL operation sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .gql-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0;
+    }
+    .gql-tab {
+      padding: 8px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none;
+      background: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .gql-tab.active {
+      color: var(--accent-purple);
+      border-bottom-color: var(--accent-purple);
+    }
+    .gql-tab:hover:not(.active) { color: var(--text-primary); }
+    .gql-panel { display: none; }
+    .gql-panel.active { display: block; }
+
+    /* â”€â”€â”€ Interactive test form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .try-it {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-top: 24px;
+    }
+    .try-it h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    .form-input:focus { border-color: var(--accent-purple); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .response-area {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      min-height: 80px;
+      margin-top: 14px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .response-area.success { color: var(--accent-green); border-color: rgba(16,185,129,0.25); }
+    .response-area.error   { color: #fc8181; border-color: rgba(252,129,129,0.25); }
+
+    /* â”€â”€â”€ Architecture diagram â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .arch-diagram {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 32px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow-x: auto;
+      justify-content: center;
+    }
+    .arch-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 16px 20px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-base);
+      min-width: 110px;
+      text-align: center;
+    }
+    .arch-box .icon { font-size: 1.5rem; }
+    .arch-box .label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); }
+    .arch-box .sublabel { font-size: 0.65rem; color: var(--text-muted); }
+    .arch-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    .arch-box.highlight {
+      border-color: rgba(139,92,246,0.4);
+      box-shadow: var(--glow);
+    }
+
+    /* â”€â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    footer {
+      margin-left: var(--sidebar-w);
+      border-top: 1px solid var(--border);
+      padding: 28px 64px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    footer a { color: var(--accent-purple); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* â”€â”€â”€ Responsive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main, footer { margin-left: 0; max-width: 100%; }
+      .hero { padding: 48px 28px; }
+      .hero h1 { font-size: 2.2rem; }
+      .content { padding: 32px 28px; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TOP BAR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<header class="topbar">
+  <div class="logo">âš¡ Recourse</div>
+  <nav style="display:flex;gap:20px;margin-left:20px;">
+    <a href="#overview" class="topbar-link">Overview</a>
+    <a href="#auth-section" class="topbar-link">Auth</a>
+    <a href="#graphql-section" class="topbar-link">GraphQL</a>
+    <a href="#disputes-section" class="topbar-link">Disputes</a>
+    <a href="/graphql" class="topbar-link" target="_blank">GraphiQL â†—</a>
+  </nav>
+  <div class="topbar-spacer"></div>
+  <span class="badge badge-online">ONLINE</span>
+  <span class="badge badge-version">v1.0.0</span>
+</header>
+
+<div class="layout">
+
+  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• SIDEBAR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Getting Started</div>
+      <a href="#overview" class="sidebar-link active" id="nav-overview">
+        <span class="icon">ðŸ </span> Overview
+      </a>
+      <a href="#quickstart" class="sidebar-link" id="nav-quickstart">
+        <span class="icon">ðŸš€</span> Quickstart
+      </a>
+      <a href="#architecture" class="sidebar-link">
+        <span class="icon">ðŸ—ï¸</span> Architecture
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Authentication</div>
+      <a href="#auth-section" class="sidebar-link" id="nav-auth">
+        <span class="icon">ðŸ”</span> JWT Auth
+      </a>
+      <a href="#rbac-section" class="sidebar-link">
+        <span class="icon">ðŸ›¡ï¸</span> RBAC
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">GraphQL API</div>
+      <a href="#graphql-section" class="sidebar-link">
+        <span class="icon">â—ˆ</span> Schema
+      </a>
+      <a href="#mutations-section" class="sidebar-link">
+        <span class="icon">âœï¸</span> Mutations
+      </a>
+      <a href="#queries-section" class="sidebar-link">
+        <span class="icon">ðŸ”</span> Queries
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Resources</div>
+      <a href="#disputes-section" class="sidebar-link">
+        <span class="icon">âš–ï¸</span> Disputes
+      </a>
+      <a href="#users-section" class="sidebar-link">
+        <span class="icon">ðŸ‘¥</span> Users
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Deployment</div>
+      <a href="#docker-section" class="sidebar-link">
+        <span class="icon">ðŸ³</span> Docker
+      </a>
+      <a href="#config-section" class="sidebar-link">
+        <span class="icon">âš™ï¸</span> Config
+      </a>
+    </div>
+  </nav>
+
+  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• MAIN â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+  <main class="main">
+
+    <!-- â”€â”€ HERO â”€â”€ -->
+    <section class="hero">
+      <div class="hero-tag">
+        <span>â—ˆ</span> Go Microservice Â· GraphQL Â· PostgreSQL
+      </div>
+      <h1>
+        <span class="gradient-text">Recourse</span><br />
+        API Documentation
+      </h1>
+      <p class="hero-desc">
+        A high-performance financial dispute resolution microservice built in Go. JWT authentication,
+        hierarchical RBAC, GraphQL API with chi router, and pgx-native PostgreSQL persistence.
+        Production-ready from day one.
+      </p>
+      <div class="hero-actions">
+        <a href="#quickstart" class="btn btn-primary">âš¡ Quickstart</a>
+        <a href="/graphql" class="btn btn-outline" target="_blank">â—ˆ Open GraphiQL</a>
+        <a href="/health" class="btn btn-outline" target="_blank">ðŸ’š Health Check</a>
+      </div>
+    </section>
+
+    <div class="content">
+
+      <!-- â”€â”€ STATS â”€â”€ -->
+      <a id="overview" class="section-anchor"></a>
+      <div class="stats-bar">
+        <div class="stat-card">
+          <div class="stat-value">~0ms</div>
+          <div class="stat-label">p50 Query Latency</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">4</div>
+          <div class="stat-label">RBAC Roles</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">9</div>
+          <div class="stat-label">GraphQL Operations</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">pgx/v5</div>
+          <div class="stat-label">DB Driver</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">HS256</div>
+          <div class="stat-label">JWT Signing</div>
+        </div>
+      </div>
+
+      <!-- â”€â”€ OVERVIEW â”€â”€ -->
+      <section class="section" id="overview-sec">
+        <h2>Overview</h2>
+        <p class="section-desc">
+          Recourse exposes a unified <strong>GraphQL endpoint</strong> at <code style="color:var(--accent-cyan);font-family:monospace">/graphql</code> for all data operations,
+          plus convenience REST endpoints under <code style="color:var(--accent-cyan);font-family:monospace">/api/v1/</code>. All write operations require a valid JWT bearer token.
+          An interactive GraphiQL IDE is available at <code style="color:var(--accent-cyan);font-family:monospace">GET /graphql</code>.
+        </p>
+
+        <div class="card-grid">
+          <div class="card">
+            <div class="card-icon">âš¡</div>
+            <h4>High Performance</h4>
+            <p>pgx/v5 native driver with connection pooling (25 conns), prepared statements, and statement-level timeouts on every connection.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon">ðŸ”</div>
+            <h4>Secure by Default</h4>
+            <p>HS256 JWT tokens with configurable expiry, RBAC enforcement at the resolver level, and bcrypt password hashing.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon">â—ˆ</div>
+            <h4>GraphQL First</h4>
+            <p>Full schema with queries and mutations. Includes the embedded GraphiQL IDE for exploration without any external tooling.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon">ðŸ³</div>
+            <h4>Container Ready</h4>
+            <p>Multi-stage Docker build producing a distroless &lt;15MB image. Compose file brings up Postgres and the API with one command.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- â”€â”€ QUICKSTART â”€â”€ -->
+      <section class="section" id="quickstart">
+        <a class="section-anchor"></a>
+        <h2>Quickstart</h2>
+        <p class="section-desc">Get Recourse running locally in under 2 minutes with Docker Compose.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">bash</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="cmt"># 1. Clone and enter the project</span>
+<span class="kw">cd</span> igeTayor/recourse
+
+<span class="cmt"># 2. Start PostgreSQL and the API</span>
+<span class="fn">docker compose</span> up <span class="op">-d</span>
+
+<span class="cmt"># 3. Verify health</span>
+<span class="fn">curl</span> http://localhost:8083/health
+
+<span class="cmt"># 4. Open GraphiQL in browser</span>
+<span class="fn">open</span> http://localhost:8083/graphql</pre>
+        </div>
+
+        <h3>Run Natively (Go 1.25+)</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">bash</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="cmt"># Set required environment</span>
+<span class="kw">export</span> <span class="key">DATABASE_URL</span>=<span class="str">"postgres://postgres:postgres@localhost:5432/recourse_db?sslmode=disable"</span>
+<span class="kw">export</span> <span class="key">JWT_SECRET</span>=<span class="str">"your-secure-secret-key"</span>
+
+<span class="cmt"># Run schema migration</span>
+<span class="fn">psql</span> <span class="op">$DATABASE_URL</span> <span class="op">-f</span> migrations/000001_create_tables.up.sql
+
+<span class="cmt"># Start the server</span>
+<span class="fn">go run</span> ./cmd/server</pre>
+        </div>
+
+        <h3>Run Tests (with race detector)</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">bash</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="fn">go test</span> <span class="op">-race -count=1 -v</span> ./internal/...</pre>
+        </div>
+      </section>
+
+      <!-- â”€â”€ ARCHITECTURE â”€â”€ -->
+      <section class="section" id="architecture">
+        <a class="section-anchor"></a>
+        <h2>Architecture</h2>
+        <p class="section-desc">Clean layered architecture separating transport, domain logic, and persistence.</p>
+
+        <div class="arch-diagram">
+          <div class="arch-box">
+            <div class="icon">ðŸŒ</div>
+            <div class="label">Client</div>
+            <div class="sublabel">Browser / CLI</div>
+          </div>
+          <div class="arch-arrow">â†’</div>
+          <div class="arch-box highlight">
+            <div class="icon">ðŸ”€</div>
+            <div class="label">chi Router</div>
+            <div class="sublabel">JWT Â· CORS Â· Timeout</div>
+          </div>
+          <div class="arch-arrow">â†’</div>
+          <div class="arch-box highlight">
+            <div class="icon">â—ˆ</div>
+            <div class="label">GraphQL</div>
+            <div class="sublabel">Schema Â· Resolvers Â· RBAC</div>
+          </div>
+          <div class="arch-arrow">â†’</div>
+          <div class="arch-box highlight">
+            <div class="icon">ðŸ—„ï¸</div>
+            <div class="label">Repositories</div>
+            <div class="sublabel">pgx/v5 Pool</div>
+          </div>
+          <div class="arch-arrow">â†’</div>
+          <div class="arch-box">
+            <div class="icon">ðŸ˜</div>
+            <div class="label">PostgreSQL</div>
+            <div class="sublabel">:5432</div>
+          </div>
+        </div>
+
+        <div class="code-block" style="margin-top:20px;">
+          <div class="code-header">
+            <span class="code-lang">Project structure</span>
+          </div>
+          <pre>recourse/
+â”œâ”€â”€ cmd/server/main.go          <span class="cmt"># Entrypoint â€” wires all dependencies</span>
+â”œâ”€â”€ internal/
+â”‚   â”œâ”€â”€ api/router.go           <span class="cmt"># chi router, middleware chain</span>
+â”‚   â”œâ”€â”€ auth/jwt.go             <span class="cmt"># JWT generation, validation, middleware</span>
+â”‚   â”œâ”€â”€ config/config.go        <span class="cmt"># Environment-based config</span>
+â”‚   â”œâ”€â”€ db/
+â”‚   â”‚   â”œâ”€â”€ db.go               <span class="cmt"># pgxpool setup</span>
+â”‚   â”‚   â”œâ”€â”€ user_repo.go        <span class="cmt"># User persistence</span>
+â”‚   â”‚   â””â”€â”€ dispute_repo.go     <span class="cmt"># Dispute persistence</span>
+â”‚   â”œâ”€â”€ graph/
+â”‚   â”‚   â”œâ”€â”€ handler.go          <span class="cmt"># GraphQL HTTP handler</span>
+â”‚   â”‚   â”œâ”€â”€ resolver.go         <span class="cmt"># Root resolver + type definitions</span>
+â”‚   â”‚   â””â”€â”€ resolvers.go        <span class="cmt"># All query & mutation resolvers</span>
+â”‚   â”œâ”€â”€ logger/logger.go        <span class="cmt"># Structured JSON logging</span>
+â”‚   â”œâ”€â”€ models/models.go        <span class="cmt"># Domain types</span>
+â”‚   â””â”€â”€ rbac/rbac.go            <span class="cmt"># Role hierarchy enforcement</span>
+â”œâ”€â”€ migrations/
+â”‚   â””â”€â”€ 000001_create_tables.up.sql
+â”œâ”€â”€ web/index.html              <span class="cmt"># This documentation page</span>
+â”œâ”€â”€ Dockerfile
+â””â”€â”€ docker-compose.yml</pre>
+        </div>
+      </section>
+
+      <!-- â”€â”€ AUTH â”€â”€ -->
+      <section class="section" id="auth-section">
+        <a class="section-anchor"></a>
+        <h2>Authentication</h2>
+        <p class="section-desc">
+          Recourse uses <strong>HS256 JWT tokens</strong>. All protected operations require an
+          <code style="color:var(--accent-cyan);font-family:monospace">Authorization: Bearer &lt;token&gt;</code> header.
+          Tokens embed the user's role and permission set for zero-database-roundtrip authorization.
+        </p>
+
+        <h3>Register a User</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">graphql</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="kw">mutation</span> <span class="fn">Register</span>(<span class="op">$input</span>: <span class="type">RegisterInput</span>!) {
+  <span class="field">register</span>(input: <span class="op">$input</span>) {
+    <span class="field">token</span>
+    <span class="field">expiresIn</span>
+    <span class="field">user</span> {
+      <span class="field">id</span>
+      <span class="field">email</span>
+      <span class="field">role</span>
+    }
+  }
+}
+
+<span class="cmt">// Variables</span>
+{
+  <span class="str">"input"</span>: {
+    <span class="str">"email"</span>: <span class="str">"alice@company.com"</span>,
+    <span class="str">"password"</span>: <span class="str">"secure-password-123"</span>,
+    <span class="str">"fullName"</span>: <span class="str">"Alice Johnson"</span>,
+    <span class="str">"role"</span>: <span class="str">"USER"</span>
+  }
+}</pre>
+        </div>
+
+        <h3>Login</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">graphql</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="kw">mutation</span> <span class="fn">Login</span>(<span class="op">$input</span>: <span class="type">LoginInput</span>!) {
+  <span class="field">login</span>(input: <span class="op">$input</span>) {
+    <span class="field">token</span>
+    <span class="field">expiresIn</span>
+  }
+}
+
+<span class="cmt">// Variables</span>
+{ <span class="str">"input"</span>: { <span class="str">"email"</span>: <span class="str">"alice@company.com"</span>, <span class="str">"password"</span>: <span class="str">"secure-password-123"</span> } }</pre>
+        </div>
+
+        <!-- â”€â”€ Interactive Login Test â”€â”€ -->
+        <div class="try-it">
+          <h4>ðŸ§ª Try It â€” Login</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="login-email">Email</label>
+              <input id="login-email" type="email" class="form-input" placeholder="alice@company.com" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="login-password">Password</label>
+              <input id="login-password" type="password" class="form-input" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="tryLogin()" id="login-btn">Send Request</button>
+          <div id="login-response" class="response-area">Response will appear hereâ€¦</div>
+        </div>
+      </section>
+
+      <!-- â”€â”€ RBAC â”€â”€ -->
+      <section class="section" id="rbac-section">
+        <a class="section-anchor"></a>
+        <h2>Role-Based Access Control</h2>
+        <p class="section-desc">
+          Four roles with a strict hierarchy. Admins supersede all roles. Roles are embedded in
+          the JWT and enforced at the resolver level â€” no extra database round-trips.
+        </p>
+        <table class="role-table">
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Level</th>
+              <th>Permissions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="role-chip role-admin">ADMIN</span></td>
+              <td>100</td>
+              <td>
+                <span class="perm-tag">disputes:*</span>
+                <span class="perm-tag">users:read</span>
+                <span class="perm-tag">users:manage</span>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="role-chip role-analyst">ANALYST</span></td>
+              <td>50</td>
+              <td>
+                <span class="perm-tag">disputes:read</span>
+                <span class="perm-tag">disputes:write</span>
+                <span class="perm-tag">disputes:resolve</span>
+                <span class="perm-tag">users:read</span>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="role-chip role-auditor">AUDITOR</span></td>
+              <td>30</td>
+              <td>
+                <span class="perm-tag">disputes:read</span>
+                <span class="perm-tag">users:read</span>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="role-chip role-user">USER</span></td>
+              <td>10</td>
+              <td>
+                <span class="perm-tag">disputes:read</span>
+                <span class="perm-tag">disputes:write</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- â”€â”€ GRAPHQL â”€â”€ -->
+      <section class="section" id="graphql-section">
+        <a class="section-anchor"></a>
+        <h2>GraphQL Schema</h2>
+        <p class="section-desc">
+          All operations go through <code style="color:var(--accent-cyan);font-family:monospace">POST /graphql</code>.
+          Pass variables in the <code style="color:var(--accent-cyan);font-family:monospace">variables</code> field.
+          The interactive IDE is at <code style="color:var(--accent-cyan);font-family:monospace">GET /graphql</code>.
+        </p>
+
+        <div class="endpoint-item">
+          <span class="method-badge method-post">POST</span>
+          <div>
+            <div class="endpoint-path">/graphql</div>
+            <div class="endpoint-desc">Main GraphQL endpoint â€” queries and mutations</div>
+          </div>
+          <div class="endpoint-auth">ðŸ” JWT required for most operations</div>
+        </div>
+        <div class="endpoint-item">
+          <span class="method-badge method-get">GET</span>
+          <div>
+            <div class="endpoint-path">/graphql</div>
+            <div class="endpoint-desc">Embedded GraphiQL IDE</div>
+          </div>
+        </div>
+        <div class="endpoint-item">
+          <span class="method-badge method-get">GET</span>
+          <div>
+            <div class="endpoint-path">/health Â· /ready</div>
+            <div class="endpoint-desc">Health and readiness checks</div>
+          </div>
+        </div>
+        <div class="endpoint-item">
+          <span class="method-badge method-post">POST</span>
+          <div>
+            <div class="endpoint-path">/api/v1/auth/register Â· /api/v1/auth/login</div>
+            <div class="endpoint-desc">Convenience REST auth endpoints (delegates to GraphQL resolvers)</div>
+          </div>
+        </div>
+        <div class="endpoint-item">
+          <span class="method-badge method-get">GET</span>
+          <div>
+            <div class="endpoint-path">/api/v1/disputes Â· /api/v1/disputes/{id}</div>
+            <div class="endpoint-desc">REST read endpoints for disputes</div>
+          </div>
+          <div class="endpoint-auth">ðŸ” JWT required</div>
+        </div>
+      </section>
+
+      <!-- â”€â”€ DISPUTES â”€â”€ -->
+      <section class="section" id="disputes-section">
+        <a class="section-anchor"></a>
+        <h2>Disputes</h2>
+        <p class="section-desc">
+          Disputes represent financial transaction dispute cases. They flow through a defined
+          lifecycle: <code style="color:var(--accent-cyan);font-family:monospace">OPEN â†’ UNDER_REVIEW â†’ RESOLVED | REJECTED</code>.
+        </p>
+
+        <div class="gql-tabs">
+          <button class="gql-tab active" onclick="switchTab(this,'create-dispute')">Create</button>
+          <button class="gql-tab" onclick="switchTab(this,'list-disputes')">List</button>
+          <button class="gql-tab" onclick="switchTab(this,'update-dispute')">Update</button>
+          <button class="gql-tab" onclick="switchTab(this,'delete-dispute')">Delete</button>
+        </div>
+
+        <div id="create-dispute" class="gql-panel active">
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-lang">graphql Â· Requires auth</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><span class="kw">mutation</span> <span class="fn">CreateDispute</span>(<span class="op">$input</span>: <span class="type">CreateDisputeInput</span>!) {
+  <span class="field">createDispute</span>(input: <span class="op">$input</span>) {
+    <span class="field">id</span>
+    <span class="field">title</span>
+    <span class="field">amount</span>
+    <span class="field">currency</span>
+    <span class="field">status</span>
+    <span class="field">createdAt</span>
+    <span class="field">createdBy</span> { <span class="field">id</span> <span class="field">email</span> <span class="field">role</span> }
+  }
+}
+
+{ <span class="str">"input"</span>: { <span class="str">"title"</span>: <span class="str">"Unauthorized charge"</span>, <span class="str">"description"</span>: <span class="str">"Card charged without consent"</span>,
+               <span class="str">"amount"</span>: <span class="num">249.99</span>, <span class="str">"currency"</span>: <span class="str">"USD"</span> } }</pre>
+          </div>
+        </div>
+
+        <div id="list-disputes" class="gql-panel">
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-lang">graphql Â· Requires auth</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><span class="kw">query</span> <span class="fn">Disputes</span>(<span class="op">$status</span>: <span class="type">DisputeStatus</span>) {
+  <span class="field">disputes</span>(status: <span class="op">$status</span>) {
+    <span class="field">id</span>
+    <span class="field">title</span>
+    <span class="field">amount</span>
+    <span class="field">currency</span>
+    <span class="field">status</span>
+    <span class="field">createdAt</span>
+    <span class="field">createdBy</span> { <span class="field">email</span> <span class="field">fullName</span> }
+    <span class="field">assignee</span>  { <span class="field">email</span> <span class="field">fullName</span> }
+  }
+}
+
+<span class="cmt">// Filter by status â€” omit for all disputes</span>
+{ <span class="str">"status"</span>: <span class="str">"OPEN"</span> }   <span class="cmt">// OPEN | UNDER_REVIEW | RESOLVED | REJECTED</span></pre>
+          </div>
+        </div>
+
+        <div id="update-dispute" class="gql-panel">
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-lang">graphql Â· Requires ANALYST or ADMIN</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><span class="kw">mutation</span> <span class="fn">UpdateDispute</span>(<span class="op">$id</span>: <span class="type">ID!</span>, <span class="op">$input</span>: <span class="type">UpdateDisputeInput</span>!) {
+  <span class="field">updateDispute</span>(id: <span class="op">$id</span>, input: <span class="op">$input</span>) {
+    <span class="field">id</span>
+    <span class="field">status</span>
+    <span class="field">resolutionNotes</span>
+    <span class="field">assignee</span> { <span class="field">email</span> }
+    <span class="field">updatedAt</span>
+  }
+}
+
+{ <span class="str">"id"</span>: <span class="str">"dispute-uuid"</span>,
+  <span class="str">"input"</span>: { <span class="str">"status"</span>: <span class="str">"RESOLVED"</span>, <span class="str">"resolutionNotes"</span>: <span class="str">"Refund issued to card ending 4242"</span> } }</pre>
+          </div>
+        </div>
+
+        <div id="delete-dispute" class="gql-panel">
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-lang">graphql Â· Requires ADMIN</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><span class="kw">mutation</span> <span class="fn">DeleteDispute</span>(<span class="op">$id</span>: <span class="type">ID!</span>) {
+  <span class="field">deleteDispute</span>(id: <span class="op">$id</span>)  <span class="cmt"># returns Boolean</span>
+}
+
+{ <span class="str">"id"</span>: <span class="str">"dispute-uuid-to-delete"</span> }</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- â”€â”€ USERS â”€â”€ -->
+      <section class="section" id="users-section">
+        <a class="section-anchor"></a>
+        <h2>Users</h2>
+        <p class="section-desc">User management operations. Most require elevated privileges.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">graphql â€” Get current user profile</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="kw">query</span> <span class="fn">Me</span> {
+  <span class="field">me</span> {
+    <span class="field">id</span>
+    <span class="field">email</span>
+    <span class="field">fullName</span>
+    <span class="field">role</span>
+    <span class="field">createdAt</span>
+  }
+}</pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">graphql â€” List all users (ANALYST+)</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="kw">query</span> <span class="fn">Users</span> {
+  <span class="field">users</span> {
+    <span class="field">id</span> <span class="field">email</span> <span class="field">fullName</span> <span class="field">role</span> <span class="field">createdAt</span>
+  }
+}</pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">graphql â€” Update user role (ADMIN only)</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="kw">mutation</span> <span class="fn">UpdateUserRole</span>(<span class="op">$userId</span>: <span class="type">ID!</span>, <span class="op">$role</span>: <span class="type">Role!</span>) {
+  <span class="field">updateUserRole</span>(userId: <span class="op">$userId</span>, role: <span class="op">$role</span>) {
+    <span class="field">id</span> <span class="field">email</span> <span class="field">role</span>
+  }
+}
+
+{ <span class="str">"userId"</span>: <span class="str">"user-uuid"</span>, <span class="str">"role"</span>: <span class="str">"ANALYST"</span> }</pre>
+        </div>
+      </section>
+
+      <!-- â”€â”€ DOCKER â”€â”€ -->
+      <section class="section" id="docker-section">
+        <a class="section-anchor"></a>
+        <h2>Docker Deployment</h2>
+        <p class="section-desc">Production-grade multi-stage build producing a minimal distroless image.</p>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">bash â€” One-command start</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="cmt"># Start all services (API + PostgreSQL)</span>
+<span class="fn">docker compose</span> up <span class="op">-d</span>
+
+<span class="cmt"># View real-time logs</span>
+<span class="fn">docker compose</span> logs <span class="op">-f</span> recourse
+
+<span class="cmt"># Rebuild after code changes</span>
+<span class="fn">docker compose</span> up <span class="op">-d --build</span></pre>
+        </div>
+      </section>
+
+      <!-- â”€â”€ CONFIG â”€â”€ -->
+      <section class="section" id="config-section">
+        <a class="section-anchor"></a>
+        <h2>Configuration Reference</h2>
+        <p class="section-desc">All configuration via environment variables with production-safe defaults.</p>
+
+        <table class="role-table">
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Default</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code style="font-family:monospace;font-size:0.8rem;color:var(--accent-cyan)">PORT</code></td>
+              <td><code style="font-size:0.8rem;color:var(--accent-green)">8083</code></td>
+              <td>HTTP server port</td>
+            </tr>
+            <tr>
+              <td><code style="font-family:monospace;font-size:0.8rem;color:var(--accent-cyan)">DATABASE_URL</code></td>
+              <td><code style="font-size:0.8rem;color:var(--accent-green)">postgres://...</code></td>
+              <td>PostgreSQL connection string</td>
+            </tr>
+            <tr>
+              <td><code style="font-family:monospace;font-size:0.8rem;color:var(--accent-cyan)">JWT_SECRET</code></td>
+              <td><em style="color:var(--text-muted)">insecure default</em></td>
+              <td>âš ï¸ Always override in production</td>
+            </tr>
+            <tr>
+              <td><code style="font-family:monospace;font-size:0.8rem;color:var(--accent-cyan)">JWT_EXPIRATION_HOURS</code></td>
+              <td><code style="font-size:0.8rem;color:var(--accent-green)">24</code></td>
+              <td>Token validity in hours</td>
+            </tr>
+            <tr>
+              <td><code style="font-family:monospace;font-size:0.8rem;color:var(--accent-cyan)">DB_MAX_CONNS</code></td>
+              <td><code style="font-size:0.8rem;color:var(--accent-green)">25</code></td>
+              <td>pgxpool max connections</td>
+            </tr>
+            <tr>
+              <td><code style="font-family:monospace;font-size:0.8rem;color:var(--accent-cyan)">DB_MIN_CONNS</code></td>
+              <td><code style="font-size:0.8rem;color:var(--accent-green)">5</code></td>
+              <td>pgxpool min connections</td>
+            </tr>
+            <tr>
+              <td><code style="font-family:monospace;font-size:0.8rem;color:var(--accent-cyan)">REQUEST_TIMEOUT_SEC</code></td>
+              <td><code style="font-size:0.8rem;color:var(--accent-green)">5</code></td>
+              <td>Per-request context timeout</td>
+            </tr>
+            <tr>
+              <td><code style="font-family:monospace;font-size:0.8rem;color:var(--accent-cyan)">LOG_LEVEL</code></td>
+              <td><code style="font-size:0.8rem;color:var(--accent-green)">INFO</code></td>
+              <td>DEBUG Â· INFO Â· WARN Â· ERROR</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+    </div><!-- /content -->
+  </main>
+</div><!-- /layout -->
+
+<footer>
+  <div>
+    <strong style="background:var(--grad-hero);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Recourse</strong>
+    â€” Built with Go Â· chi Â· pgx/v5 Â· GraphQL Â· JWT
+  </div>
+  <div style="display:flex;gap:20px;">
+    <a href="/health">Health</a>
+    <a href="/graphql" target="_blank">GraphiQL</a>
+    <a href="https://github.com/igetayor/recourse" target="_blank">GitHub â†—</a>
+  </div>
+</footer>
+
+<script>
+  // â”€â”€ Copy code â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  function copyCode(btn) {
+    const pre = btn.closest('.code-block').querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      btn.style.color = 'var(--accent-green)';
+      btn.style.borderColor = 'var(--accent-green)';
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 1800);
+    });
+  }
+
+  // â”€â”€ GraphQL tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  function switchTab(btn, panelId) {
+    document.querySelectorAll('.gql-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.gql-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(panelId).classList.add('active');
+  }
+
+  // â”€â”€ Try Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  async function tryLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const resp = document.getElementById('login-response');
+    const btn = document.getElementById('login-btn');
+
+    if (!email || !password) {
+      resp.textContent = 'âš ï¸  Please enter email and password.';
+      resp.className = 'response-area error';
+      return;
+    }
+
+    btn.textContent = 'Sendingâ€¦';
+    btn.disabled = true;
+    resp.className = 'response-area';
+    resp.textContent = 'Loadingâ€¦';
+
+    try {
+      const apiBase = window.location.protocol === 'file:' ? 'http://localhost:8083' : '';
+      const r = await fetch(apiBase + '/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operationName: 'Login',
+          query: 'mutation Login($input: LoginInput!) { login(input: $input) { token expiresIn user { id email fullName role } } }',
+          variables: { input: { email, password } }
+        })
+      });
+      const json = await r.json();
+      if (json.errors) {
+        resp.className = 'response-area error';
+        resp.textContent = 'âœ—  ' + json.errors[0].message;
+      } else {
+        resp.className = 'response-area success';
+        resp.textContent = JSON.stringify(json.data, null, 2);
+        // Store token for convenience
+        if (json.data?.login?.token) {
+          localStorage.setItem('recourse_token', json.data.login.token);
+          resp.textContent += '\n\nâœ“ Token saved to localStorage["recourse_token"]';
+        }
+      }
+    } catch(e) {
+      resp.className = 'response-area error';
+      resp.textContent = 'âœ—  Network error: ' + e.message + '\n\nMake sure the server is running on :8083';
+    } finally {
+      btn.textContent = 'Send Request';
+      btn.disabled = false;
+    }
+  }
+
+  // â”€â”€ Active sidebar highlighting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const sections = document.querySelectorAll('.section[id]');
+  const navLinks = document.querySelectorAll('.sidebar-link');
+  const topbarH = 60;
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === '#' + entry.target.id) {
+            link.classList.add('active');
+          }
+        });
+      }
+    });
+  }, { rootMargin: `-${topbarH}px 0px -60% 0px`, threshold: 0 });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
+
+

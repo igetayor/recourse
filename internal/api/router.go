@@ -70,6 +70,9 @@ func NewRouter(cfg *config.Config, schema *graph.Schema, jwtService *auth.JWTSer
 	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(webDir, "index.html"))
 	})
+	r.Get("/style.css", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(webDir, "style.css"))
+	})
 	r.Handle("/static/*", http.StripPrefix("/static/", fs))
 
 	return r
